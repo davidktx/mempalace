@@ -284,7 +284,7 @@ def functional(inst, work, base_palace=None):
 
 def snyk_scans(out: Path):
     out.mkdir(parents=True, exist_ok=True)
-    venv = out / "venv"
+    venv = Path(tempfile.mkdtemp(prefix="mp-snyk-venv-"))  # outside the scanned dir
     req = out / "requirements.txt"
     exp = subprocess.run(["uv", "export", "--frozen", "--no-hashes", "--no-emit-project",
                           *os.environ.get("VALIDATION_UV_EXPORT_ARGS", "").split()],
@@ -292,8 +292,9 @@ def snyk_scans(out: Path):
     skip = ("directml", "coreml", "cuda", "windows", "win32")
     req.write_text("\n".join(l for l in exp.splitlines() if l.strip() and not l.lstrip().startswith("#")
                              and not any(s in l.lower() for s in skip)) + "\n")
-    subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
-    subprocess.run([str(venv / "bin" / "pip"), "-q", "install", "-r", str(req)], check=True)
+    # Snyk's pip plugin needs pip inside the venv, hence --seed.
+    subprocess.run(["uv", "venv", "-q", "--seed", "--allow-existing", "-p", sys.executable, str(venv)], check=True)
+    subprocess.run(["uv", "pip", "install", "-q", "-p", str(venv / "bin" / "python"), "-r", str(req)], check=True)
     with open(out / "oss.json", "w") as fh:
         subprocess.run(["snyk", "test", "--file=requirements.txt", "--package-manager=pip",
                         f"--command={venv / 'bin' / 'python'}", "--skip-unresolved", "--json"], cwd=out, stdout=fh)
@@ -306,12 +307,15 @@ def snyk_scans(out: Path):
 def summarize(d: Path) -> dict:
     s = {"oss": {}, "code": {}}
     try:
-        vulns = {v["id"]: v for v in json.loads((d / "oss.json").read_text()).get("vulnerabilities", [])}
+        raw = json.loads((d / "oss.json").read_text())
+        if raw.get("ok") is False and raw.get("error"):
+            raise ValueError(raw["error"])
+        vulns = {v["id"]: v for v in raw.get("vulnerabilities", [])}
         for v in vulns.values():
             s["oss"][v["severity"]] = s["oss"].get(v["severity"], 0) + 1
         s["oss_packages"] = sorted({f"{v['packageName']}@{v['version']}" for v in vulns.values()})
-    except (OSError, ValueError):
-        s["oss"] = "missing"
+    except (OSError, ValueError) as exc:
+        s["oss"] = f"missing: {str(exc)[:200]}"
     try:
         for r in json.loads((d / "code.json").read_text())["runs"][0]["results"]:
             s["code"][r["level"]] = s["code"].get(r["level"], 0) + 1
@@ -345,11 +349,22 @@ def main():
         if not a.skip_pytest:
             p = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"], cwd=REPO)
             report["pytest_rc"] = p.returncode
+            ok = ok and p.returncode == 0
         stamp = time.strftime("%Y%m%d-%H%M%S")
         report["snyk"] = snyk_scans(a.out / stamp)
+        cur = report["snyk"]
+        ok = ok and isinstance(cur["oss"], dict) and isinstance(cur["code"], dict)
         if a.baseline:
-            report["baseline"] = summarize(a.baseline)
-        print(json.dumps({k: report.get(k) for k in ("pytest_rc", "snyk", "baseline")}, indent=2))
+            base = report["baseline"] = summarize(a.baseline)
+            regressions = {}
+            for kind in ("oss", "code"):
+                if isinstance(base[kind], dict) and isinstance(cur[kind], dict):
+                    for sev, n in cur[kind].items():
+                        if n > base[kind].get(sev, 0):
+                            regressions[f"{kind}.{sev}"] = [base[kind].get(sev, 0), n]
+            report["regressions"] = regressions
+            ok = ok and not regressions
+        print(json.dumps({k: report.get(k) for k in ("pytest_rc", "snyk", "baseline", "regressions")}, indent=2))
     if a.report:
         a.report.write_text(json.dumps(report, indent=2))
     print("OVERALL:", "PASS" if ok else "FAIL")
