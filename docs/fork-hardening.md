@@ -6,7 +6,7 @@
 | `MEMPALACE_QUARANTINE_KEEP` | `1` | Older quarantined copies (`*.drift-*`, `*.corrupt-*`) kept per segment; oldest pruned before each new quarantine. Negative = unbounded (upstream behaviour). `0` = keep none. |
 | `MEMPALACE_REDACT` | `1` | Redact secrets in transcripts before chunking/indexing. |
 | `MEMPALACE_REDACT_REPLACEMENT` | `[REDACTED]` | Replacement text. |
-| `MEMPALACE_REDACT_PATTERNS_FILE` | unset | Extra regexes, one per line; a `(?P<secret>...)` group redacts only that group. |
+| `MEMPALACE_REDACT_PATTERNS_FILE` | unset | Extra literal strings to redact, one per line (matched literally, not as regexes, to rule out reDOS). |
 | `MEMPALACE_REDACT_DISABLE_DEFAULTS` | `0` | Use only the patterns file. |
 
 Default redaction patterns (`mempalace/redact.py` `DEFAULT_PATTERNS`): PEM private-key blocks, AWS access key IDs, GitHub tokens, Slack tokens, `sk-` style API keys, Google API keys, Stripe keys, JWTs, `Bearer` headers, URL credentials (`scheme://user:pass@`), and `password|secret|api_key|token|client_secret|private_key = value` assignments (label kept).
