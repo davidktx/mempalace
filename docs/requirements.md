@@ -37,3 +37,13 @@ swap must preserve. `validation/run.py` checks them; see `validation/README.md`.
   open/close). The `sqlite_exact` backend passes F3.
 - 19 Snyk OSS issues remain in chromadb (and torch/transformers, which only
   the optional `embeddinggemma2` / `multimodal` / `image` extras pull in).
+
+## Prototype on `feat/sqlite-exact-default`
+
+- `chromadb` moves to the optional `chroma` extra; `onnxruntime` becomes core.
+- Default backend for new palaces is `sqlite_exact`; existing chroma palaces
+  are still auto-detected (and need `pip install mempalace[chroma]`).
+- `mempalace/_minilm.py` runs all-MiniLM-L6-v2 on onnxruntime directly, using
+  the same archive, SHA-256 and cache as chromadb; vectors are bit-identical.
+- Migrating an existing chroma palace is not automatic: re-mine into a new
+  `sqlite_exact` palace.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import tarfile
 import urllib.request
 from functools import cached_property
@@ -95,8 +96,16 @@ class StandaloneMiniLM:
             if _sha256(archive) != MODEL_SHA256:
                 os.remove(archive)
                 raise ValueError("MiniLM archive failed SHA-256 verification")
+        # Copy only the known files, by fixed names: archive paths never
+        # choose where anything is written (no tar-slip).
+        folder.mkdir(parents=True, exist_ok=True)
         with tarfile.open(archive, "r:gz") as tar:
-            tar.extractall(path=self.DOWNLOAD_PATH, filter="data")
+            for fname in needed:
+                src = tar.extractfile(f"{EXTRACTED_FOLDER_NAME}/{fname}")
+                if src is None:
+                    raise ValueError(f"MiniLM archive is missing {fname}")
+                with src, open(folder / fname, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
 
     @staticmethod
     def _normalize(v):
