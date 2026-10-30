@@ -173,6 +173,13 @@ def _xml_local_name(tag: str) -> str:
 
 def _parse_pom(path: Path) -> Optional[str]:
     try:
+        raw = path.read_bytes()
+    except OSError:
+        raw = b""
+    # Refuse DTDs/entities outright (XXE / billion-laughs on old expat).
+    if b"<!DOCTYPE" in raw or b"<!ENTITY" in raw:
+        return None
+    try:
         root = ET.parse(path).getroot()
     except (ET.ParseError, OSError):
         return None

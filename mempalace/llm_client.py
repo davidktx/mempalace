@@ -290,12 +290,22 @@ def json_request_body(body: dict) -> bytes:
     return strip_lone_surrogates(json.dumps(body, ensure_ascii=False)).encode("utf-8")
 
 
+_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
+
+
 def post_json(url: str, body: dict, headers: dict, timeout: float) -> dict:
     """POST JSON to an LLM or embedding endpoint and return the parsed reply.
 
     Every model request leaves through here. Raises LLMError on any failure;
     ``status`` carries the HTTP status when the server answered with one.
     """
+    from urllib.parse import urlsplit
+
+    scheme = urlsplit(str(url)).scheme.lower()
+    if scheme and scheme not in _ALLOWED_URL_SCHEMES:
+        # Block file://, ftp:// etc.: an endpoint from config/env/argv must
+        # not turn into a local-file read (Snyk python/Ssrf).
+        raise LLMError(f"refusing non-HTTP(S) endpoint scheme {scheme!r}")
     try:
         req = Request(
             url,
