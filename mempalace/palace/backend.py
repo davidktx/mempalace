@@ -23,6 +23,12 @@ def _env_backend_value() -> Optional[str]:
     return value.strip().lower() if value else None
 
 
+def _default_backend_name() -> str:
+    from ..config import DEFAULT_BACKEND
+
+    return DEFAULT_BACKEND
+
+
 def resolve_backend_name(palace_path: str, explicit: Optional[str] = None) -> str:
     """Resolve and validate the selected backend for ``palace_path``.
 
@@ -44,7 +50,7 @@ def resolve_backend_name(palace_path: str, explicit: Optional[str] = None) -> st
         config_value=_config_backend_value(palace_path),
         env_value=_env_backend_value(),
         palace_path=palace_path,
-        default="chroma",
+        default=_default_backend_name(),
     )
     get_backend_class(selected)
     detected_backends = detect_backends_for_path(palace_path)

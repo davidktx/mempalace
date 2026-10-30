@@ -16,9 +16,20 @@ from numbers import Integral
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional
 
-import chromadb
-from chromadb.config import Settings as _ChromaSettings
-from chromadb.errors import NotFoundError as _ChromaNotFoundError
+try:
+    import chromadb
+    from chromadb.config import Settings as _ChromaSettings
+    from chromadb.errors import NotFoundError as _ChromaNotFoundError
+except ImportError:  # chromadb is an optional extra ("chroma")
+    # Lock, quarantine and sqlite-probe helpers in this module stay usable;
+    # only opening a chroma palace needs chromadb.
+    chromadb = None
+
+    class _ChromaNotFoundError(Exception):  # noqa: N818
+        pass
+
+    def _ChromaSettings(**_kw):  # noqa: N802
+        return None
 
 from .._env import env_bool, env_int
 from ..lexical import bm25_scores

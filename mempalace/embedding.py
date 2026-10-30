@@ -294,7 +294,10 @@ def _build_ef_class():
     """
     from functools import cached_property
 
-    from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+    try:
+        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+    except ImportError:  # chromadb is an optional extra
+        from ._minilm import StandaloneMiniLM as ONNXMiniLM_L6_V2
 
     class _MempalaceONNX(ONNXMiniLM_L6_V2):
         def __init__(self, preferred_providers=None, intra_op_num_threads=0):

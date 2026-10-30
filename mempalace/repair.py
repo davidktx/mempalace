@@ -42,7 +42,13 @@ from contextlib import closing, suppress
 from dataclasses import dataclass
 from typing import Callable, Iterator, Optional
 
-from chromadb.errors import NotFoundError as ChromaNotFoundError
+try:
+    from chromadb.errors import NotFoundError as ChromaNotFoundError
+except ImportError:  # chromadb is an optional extra
+    class ChromaNotFoundError(Exception):  # noqa: N818
+        pass
+
+
 
 from . import paths
 from .backends._inproc_sqlite import (

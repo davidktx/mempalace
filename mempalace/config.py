@@ -266,7 +266,7 @@ _default_config_dir = paths.config_dir
 # MempalaceConfig().palace_path in new code.
 DEFAULT_PALACE_PATH = paths.default_palace_path()
 DEFAULT_COLLECTION_NAME = "mempalace_drawers"
-DEFAULT_BACKEND = "chroma"
+DEFAULT_BACKEND = "sqlite_exact"
 DEFAULT_EMBEDDINGGEMMA2_REVISION = "914f7f89142e33e77833254d9c9b90c3cef7303b"
 logger = logging.getLogger(__name__)
 _EMBEDDINGGEMMA2_DIMENSIONS = frozenset({768, 512, 256, 128})

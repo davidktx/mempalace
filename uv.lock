@@ -1794,11 +1794,12 @@ name = "mempalace"
 version = "3.12.0"
 source = { editable = "." }
 dependencies = [
-    { name = "chromadb" },
     { name = "huggingface-hub" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "onnxruntime", version = "1.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "python-dateutil" },
     { name = "pyyaml" },
     { name = "tokenizers" },
@@ -1806,6 +1807,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+chroma = [
+    { name = "chromadb" },
+]
 coreml = [
     { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "onnxruntime", version = "1.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1887,13 +1891,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "autocorrect", marker = "extra == 'spellcheck'", specifier = ">=2.0" },
-    { name = "chromadb", specifier = ">=1.5.4,<2" },
+    { name = "chromadb", marker = "extra == 'chroma'", specifier = ">=1.5.4,<2" },
     { name = "huggingface-hub", specifier = ">=0.20" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.0" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx", "xlsx"], marker = "extra == 'extract'", specifier = ">=0.1.5" },
     { name = "milvus-lite", marker = "sys_platform != 'win32' and extra == 'milvus'", specifier = ">=3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "numpy", specifier = ">=1.24" },
+    { name = "onnxruntime", specifier = ">=1.17" },
     { name = "onnxruntime", marker = "extra == 'coreml'", specifier = ">=1.16" },
     { name = "onnxruntime-directml", marker = "extra == 'dml'", specifier = ">=1.16" },
     { name = "onnxruntime-gpu", marker = "extra == 'gpu'", specifier = ">=1.16" },
@@ -1924,7 +1929,7 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'embeddinggemma2'", specifier = ">=5.19.0" },
     { name = "transformers", marker = "extra == 'multimodal'", specifier = ">=5.19.0" },
 ]
-provides-extras = ["dev", "spellcheck", "milvus", "pgvector", "gpu", "dml", "coreml", "embeddinggemma2", "multimodal", "multilingual", "extract"]
+provides-extras = ["chroma", "dev", "spellcheck", "milvus", "pgvector", "gpu", "dml", "coreml", "embeddinggemma2", "multimodal", "multilingual", "extract"]
 
 [package.metadata.requires-dev]
 dev = [

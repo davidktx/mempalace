@@ -199,7 +199,7 @@ def resolve_backend_for_palace(
     config_value: Optional[str] = None,
     env_value: Optional[str] = None,
     palace_path: Optional[str] = None,
-    default: str = "chroma",
+    default: str = "sqlite_exact",
 ) -> str:
     """Resolve the backend name for a palace per RFC 001 §3.3 priority order.
 
@@ -231,14 +231,17 @@ def resolve_backend_for_palace(
 
 def _register_builtins() -> None:
     """Register chroma as the in-tree default."""
-    from .chroma import ChromaBackend
+    try:
+        from .chroma import ChromaBackend
+    except ImportError:  # chromadb is an optional extra
+        ChromaBackend = None
     from .milvus import MilvusBackend
     from .pgvector import PgVectorBackend
     from .qdrant import QdrantBackend
     from .sqlite_exact import SQLiteExactBackend
 
     # Use setdefault semantics so a caller that pre-registered for tests wins.
-    if "chroma" not in _registry:
+    if ChromaBackend is not None and "chroma" not in _registry:
         _registry["chroma"] = ChromaBackend
     if "milvus" not in _registry:
         _registry["milvus"] = MilvusBackend

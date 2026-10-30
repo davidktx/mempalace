@@ -26,7 +26,9 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "chromadb>=1.5.4,<2",
+    # chromadb is optional (extra "chroma"); the default backend is
+    # sqlite_exact and MiniLM runs on onnxruntime directly (mempalace/_minilm.py).
+    "onnxruntime>=1.17",
     "pyyaml>=6.0,<7",
     "tomli>=2.0.0; python_version < '3.11'",
     # Multilingual embedding model deps (embeddinggemma-300m ONNX), kept as
@@ -70,6 +72,9 @@ rust_exact = "mempalace.backends.rust_exact:RustExactBackend"
 [project.entry-points."mempalace.sources"]
 
 [project.optional-dependencies]
+chroma = [
+    "chromadb>=1.5.4,<2",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",

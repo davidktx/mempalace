@@ -77,7 +77,12 @@ from pathlib import Path  # noqa: E402
 from typing import Optional  # noqa: E402
 from urllib.parse import urlparse  # noqa: E402
 
-from chromadb.errors import NotFoundError as _ChromaNotFoundError  # noqa: E402
+try:
+    from chromadb.errors import NotFoundError as _ChromaNotFoundError  # noqa: E402
+except ImportError:  # chromadb is an optional extra
+
+    class _ChromaNotFoundError(Exception):  # noqa: N818
+        pass
 
 from .. import (  # noqa: E402
     paths,
