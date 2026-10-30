@@ -1,0 +1,18 @@
+{
+  "description": "Fixed recall queries over validation/corpus. A hit = expect substring appears in a top-k result.",
+  "queries": [
+    {"q": "which tomato variety for the raised bed", "expect": "Cherokee Purple"},
+    {"q": "when to start seeds indoors", "expect": "February 20"},
+    {"q": "drip timer watering duration", "expect": "25 minutes"},
+    {"q": "brake pad repair quote for the truck", "expect": "340 dollars"},
+    {"q": "oil change mileage", "expect": "48,500"},
+    {"q": "Big Bend lodge room number", "expect": "room 112"},
+    {"q": "first hike length", "expect": "4.8 miles"},
+    {"q": "thermostat heat setpoint at night", "expect": "68 degrees"},
+    {"q": "furnace filter size", "expect": "16x25x4"},
+    {"q": "who installed the water heater", "expect": "Radiant Plumbing"},
+    {"q": "dog vet appointment date", "expect": "November 12"},
+    {"q": "where do nightly backups go", "expect": "vault-two"}
+  ],
+  "must_not_appear": ["WX9f8e7d6c5b4a3zz1", "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"]
+}

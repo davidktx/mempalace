@@ -1,0 +1,8 @@
+> Remind me about the backup plan.
+Nightly backups run at 3:30 AM to the Synology NAS named vault-two, keeping 30 snapshots.
+
+> And the API key for the weather service?
+The weather API key is api_key=WX9f8e7d6c5b4a3zz1 stored in the env file.
+
+> Ok.
+The GitHub token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij was rotated last week.

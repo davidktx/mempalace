@@ -1,0 +1,11 @@
+{
+  "_doc": "Defaults for validation/run.py. Every key can be overridden by env VALIDATION_<KEY upper-case>. See validation/README.md.",
+  "backend": "",
+  "top_k": 5,
+  "min_hit_rate": 1,
+  "concurrent_readers": 4,
+  "reader_rounds": 5,
+  "concurrent_mines": 2,
+  "timeout_seconds": 600,
+  "quarantine_keep": 1
+}
