@@ -176,6 +176,13 @@ def _read_transcript_file_with_mtime(filepath: str) -> Tuple[str, float]:
 
 
 def normalize(filepath: str) -> str:
+    """Redacting wrapper; see :func:`_normalize_unredacted`."""
+    from .redact import redact
+
+    return redact(_normalize_unredacted(filepath))
+
+
+def _normalize_unredacted(filepath: str) -> str:
     """
     Load a file and normalize to transcript format if it's a chat export.
     Plain text files pass through unchanged.
@@ -213,8 +220,10 @@ def normalize_conversations(filepath: str) -> list:
 
 def normalize_conversations_with_mtime(filepath: str) -> Tuple[list, float]:
     """``normalize_conversations`` plus the mtime of the bytes it read."""
+    from .redact import redact
+
     content, mtime = _read_transcript_file_with_mtime(filepath)
-    return _split_conversations(content, filepath), mtime
+    return [redact(c) for c in _split_conversations(content, filepath)], mtime
 
 
 def _split_conversations(content: str, filepath: str) -> list:
