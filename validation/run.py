@@ -79,7 +79,9 @@ def isolated_env(work: Path) -> dict:
 
 
 def run(cmd, env, check=True):
-    p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=CFG["timeout_seconds"])
+    # cwd outside the repo, so a checkout's mempalace/ never shadows the install under test.
+    p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=CFG["timeout_seconds"],
+                       cwd=tempfile.gettempdir())
     if check and p.returncode:
         raise RuntimeError(f"{cmd[0]} failed rc={p.returncode}: {p.stderr[-2000:]}")
     return p
@@ -94,7 +96,8 @@ def mcp_session(inst, palace, requests, env):
             "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "validation", "version": "1"}}}
     lines = [json.dumps(r) for r in [init, *requests]]
     p = subprocess.run([inst.light, "--palace", str(palace), "--read-only"], input="\n".join(lines) + "\n",
-                       env=env, capture_output=True, text=True, timeout=CFG["timeout_seconds"])
+                       env=env, capture_output=True, text=True, timeout=CFG["timeout_seconds"],
+                       cwd=tempfile.gettempdir())
     out = {}
     for line in p.stdout.splitlines():
         try:
@@ -246,7 +249,7 @@ def check_quarantine_cap(inst, env, work):
     code = ("import sys;from mempalace.backends.chroma import _prune_quarantined_copies as p;"
             "p(sys.argv[1], '.drift-')")
     # Prune is backend-agnostic file handling; it lives in the chroma module.
-    run([inst.python, "-c", code, str(d / "seg-1")], env)
+    run([inst.python, "-I", "-c", code, str(d / "seg-1")], env)
     left = sorted(x.name for x in d.iterdir())
     return len(left) == keep, {"keep": keep, "left": left}
 
@@ -255,7 +258,7 @@ def check_no_telemetry_imports(inst, env):
     code = ("import sys,mempalace.backends.chroma, mempalace.mcp_light_server;"
             "bad=[m for m in ('posthog','torch','transformers','sentence_transformers') if m in sys.modules];"
             "print(','.join(bad))")
-    out = run([inst.python, "-c", code], env).stdout.strip()
+    out = run([inst.python, "-I", "-c", code], env).stdout.strip()
     return not out, {"loaded": out or "none"}
 
 
