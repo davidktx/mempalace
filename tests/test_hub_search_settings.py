@@ -49,6 +49,10 @@ def _clean_env(monkeypatch):
 
 # Env vars these modules read that provably don't change what a search returns.
 _NOT_SEARCH_SETTINGS = {
+    # Fork hardening: open/quarantine policy, never changes results.
+    "MEMPALACE_MCP_READ_ONLY",
+    "MEMPALACE_QUARANTINE_KEEP",
+    "MEMPALACE_READ_ONLY_OPEN",
     # Where writes and hook work go.
     "MEMPALACE_CLI_WRITE_ROUTING",
     "MEMPALACE_HOOK_WRITE_ROUTING",

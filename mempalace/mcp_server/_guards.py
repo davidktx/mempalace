@@ -108,6 +108,14 @@ def _apply_server_flags(palace=None, backend=None, read_only=False) -> None:
         _palace_flag_given = True
     if read_only:
         _READ_ONLY = True
+    if read_only or _READ_ONLY:
+        # Read-only servers must never repair/rename palace files on open.
+        try:
+            from ..backends.chroma import set_read_only_open
+        except ImportError:  # chroma backend not installed
+            pass
+        else:
+            set_read_only_open(True)
 
 
 _config = MempalaceConfig()

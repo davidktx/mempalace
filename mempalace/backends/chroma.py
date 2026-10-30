@@ -20,6 +20,7 @@ import chromadb
 from chromadb.config import Settings as _ChromaSettings
 from chromadb.errors import NotFoundError as _ChromaNotFoundError
 
+from .._env import env_bool, env_int
 from ..lexical import bm25_scores
 from ..stored_text import encode_filter, encode_where, prepare_stored_write, restore_rows
 from ..timeutil import filename_stamp
@@ -628,6 +629,83 @@ def _segment_appears_healthy(seg_dir: str) -> bool:
     return _hnsw_metadata_marker_intact(seg_dir)
 
 
+
+# ---------------------------------------------------------------------------
+# Read-only open policy (davidktx fork, concurrency hardening).
+#
+# A server started with ``--read-only`` (or ``MEMPALACE_MCP_READ_ONLY=1``) or a
+# process that sets ``MEMPALACE_READ_ONLY_OPEN=1`` must never rename, repair or
+# rewrite palace files during its pre-open safety pass. Those repairs race a
+# concurrent writer (miner / full server) and were one route to the truncated
+# or quarantined chromadb files reported upstream.
+# Repairs are left to the writer, which runs them under ``palace_db_lock``.
+# ---------------------------------------------------------------------------
+_READ_ONLY_OPEN = env_bool("MEMPALACE_READ_ONLY_OPEN", False) or env_bool(
+    "MEMPALACE_MCP_READ_ONLY", False
+)
+
+
+def set_read_only_open(enabled: bool) -> None:
+    """Turn the process-wide read-only open policy on or off."""
+    global _READ_ONLY_OPEN
+    _READ_ONLY_OPEN = bool(enabled)
+
+
+def read_only_open() -> bool:
+    """True when this process must not mutate palace files before opening."""
+    return _READ_ONLY_OPEN
+
+
+# Quarantine retention. Each quarantine renames a whole HNSW
+# segment dir aside; a segment that keeps re-failing used to leave one full
+# copy per open until the disk filled. ``MEMPALACE_QUARANTINE_KEEP`` caps how
+# many earlier quarantined copies of one segment are kept (oldest pruned
+# first). Default 1. A negative value means keep all (unbounded, the
+# upstream behaviour).
+_QUARANTINE_KEEP_DEFAULT = 1
+
+
+def _quarantine_keep() -> Optional[int]:
+    value = env_int("MEMPALACE_QUARANTINE_KEEP", _QUARANTINE_KEEP_DEFAULT)
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        value = _QUARANTINE_KEEP_DEFAULT
+    return None if value < 0 else value
+
+
+def _prune_quarantined_copies(seg_dir: str, marker: str) -> list[str]:
+    """Delete older ``<seg_dir><marker>*`` copies beyond the retention cap.
+
+    Called right before a new quarantine rename so that, after the rename,
+    at most ``keep + 1`` copies exist for this segment. Returns removed paths.
+    """
+    import shutil
+
+    keep = _quarantine_keep()
+    if keep is None:
+        return []
+    parent, base = os.path.split(seg_dir)
+    prefix = base + marker
+    try:
+        copies = sorted(
+            (os.path.join(parent, n) for n in os.listdir(parent) if n.startswith(prefix)),
+            key=lambda path: os.path.getmtime(path),
+        )
+    except OSError:
+        return []
+    excess = copies[: max(len(copies) - keep, 0)]
+    removed: list[str] = []
+    for path in excess:
+        try:
+            shutil.rmtree(path)
+            removed.append(path)
+            logger.warning("Pruned old quarantined segment copy %s", path)
+        except OSError:
+            logger.exception("Failed to prune quarantined copy %s", path)
+    return removed
+
+
 def quarantine_stale_hnsw(palace_path: str, stale_seconds: float = 300.0) -> list[str]:
     """Rename HNSW segment dirs that look unsafe to open.
 
@@ -705,6 +783,7 @@ def quarantine_stale_hnsw(palace_path: str, stale_seconds: float = 300.0) -> lis
 
         stamp = filename_stamp()
         target = f"{seg_dir}.drift-{stamp}"
+        _prune_quarantined_copies(seg_dir, ".drift-")
 
         if header_corrupt:
             reason = (
@@ -1574,6 +1653,7 @@ def quarantine_invalid_hnsw_metadata(palace_path: str) -> list[str]:
 
         stamp = filename_stamp()
         target = f"{seg_dir}.corrupt-{stamp}"
+        _prune_quarantined_copies(seg_dir, ".corrupt-")
         try:
             os.rename(seg_dir, target)
             moved.append(target)
@@ -2839,6 +2919,12 @@ class ChromaBackend(BaseBackend):
         re-open a palace. The ``_quarantined_paths`` gate prevents thrash on
         hot paths (e.g. ``_client()`` is called on every backend operation).
         """
+        if _READ_ONLY_OPEN:
+            # Read-only processes never repair or rename palace files: a
+            # concurrent writer may be mid-flush and the "repair" would be
+            # the corruption. The writer runs these passes under its lock.
+            logger.debug("read-only open: skipping pre-open repair pass for %s", palace_path)
+            return
         _fix_missing_collection_type(palace_path)
         _fix_blob_seq_ids(palace_path)
         if palace_path not in ChromaBackend._quarantined_paths:
