@@ -47,6 +47,10 @@ class Install:
     """Binaries of the install under test (a venv dir, or the current env)."""
 
     def __init__(self, root: Path | None):
+        if root is not None:
+            root = root.resolve(strict=True)
+            if not (root / "pyvenv.cfg").is_file():
+                raise SystemExit(f"--install must be a venv root (no pyvenv.cfg in {root})")
         bindir = (root / "bin") if root else Path(sys.executable).parent
         self.mempalace = str(bindir / "mempalace")
         self.light = str(bindir / "mempalace-light-mcp")

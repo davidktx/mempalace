@@ -11,14 +11,15 @@ Configuration (environment):
 ``MEMPALACE_REDACT_REPLACEMENT``
     Text that replaces a match. Default ``[REDACTED]``.
 ``MEMPALACE_REDACT_PATTERNS_FILE``
-    Path to a file of extra regexes, one per line (``#`` comments allowed).
-    A pattern with a named group ``secret`` redacts only that group, so the
-    label (e.g. ``password=``) stays readable.
+    Path to a file of extra literal strings, one per line (``#`` comments
+    allowed), matched literally (never as regexes, to rule out reDOS). Built-in
+    patterns with a named group ``secret`` redact only that group, so the label
+    (e.g. ``password=``) stays readable.
 ``MEMPALACE_REDACT_DISABLE_DEFAULTS``
     ``1`` to use only the patterns file. Default ``0``.
 
 Default patterns are listed in :data:`DEFAULT_PATTERNS` and documented in
-``docs/redaction.md``.
+``docs/fork-hardening.md``.
 """
 
 from __future__ import annotations
@@ -55,10 +56,9 @@ DEFAULT_PATTERNS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _load_extra(path: str) -> list[tuple[str, str]]:
-    out: list[tuple[str, str]] = []
-    # Patterns are code-like config: only trust a file this user owns that
-    # nobody else can write (a hostile regex could stall mining).
+def _load_extra(path: str) -> list[re.Pattern]:
+    out: list[re.Pattern] = []
+    # Only trust a file this user owns that nobody else can write.
     try:
         st = os.stat(path)
         if (hasattr(os, "getuid") and st.st_uid != os.getuid()) or st.st_mode & 0o022:
@@ -72,7 +72,8 @@ def _load_extra(path: str) -> list[tuple[str, str]]:
             for lineno, line in enumerate(fh, start=1):
                 line = line.strip()
                 if line and not line.startswith("#"):
-                    out.append((f"{path}:{lineno}", line))
+                    # Literal match only: no user regex, so no reDOS.
+                    out.append(re.compile(re.escape(line)))
     except OSError as exc:
         logger.warning("redaction patterns file unreadable (%s); using defaults only", exc)
     return out
@@ -81,9 +82,7 @@ def _load_extra(path: str) -> list[tuple[str, str]]:
 @lru_cache(maxsize=None)
 def _compiled(extra_path: str, disable_defaults: bool) -> tuple[re.Pattern, ...]:
     specs: list[tuple[str, str]] = [] if disable_defaults else list(DEFAULT_PATTERNS)
-    if extra_path:
-        specs.extend(_load_extra(extra_path))
-    compiled = []
+    compiled = list(_load_extra(extra_path)) if extra_path else []
     for name, rx in specs:
         try:
             compiled.append(re.compile(rx))

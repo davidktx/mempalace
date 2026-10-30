@@ -112,13 +112,14 @@ def test_disabled_and_custom(monkeypatch, tmp_path):
     assert R.redact("password=abc") == "password=abc"
     monkeypatch.setenv("MEMPALACE_REDACT", "1")
     f = tmp_path / "p.txt"
-    f.write_text("# comment\ninternal-(?P<secret>[0-9]+)\n")
+    f.write_text("# comment\ninternal-42\nnot.a[regex]+\n")
     f.chmod(0o600)
     monkeypatch.setenv("MEMPALACE_REDACT_PATTERNS_FILE", str(f))
     monkeypatch.setenv("MEMPALACE_REDACT_DISABLE_DEFAULTS", "1")
     monkeypatch.setenv("MEMPALACE_REDACT_REPLACEMENT", "***")
     R._compiled.cache_clear()
-    assert R.redact("internal-42 password=abc") == "internal-*** password=abc"
+    assert R.redact("internal-42 password=abc") == "*** password=abc"
+    assert R.redact("notXa[regex]+ not.a[regex]+") == "notXa[regex]+ ***"
 
 
 def test_plain_text_unchanged():
@@ -157,7 +158,7 @@ def test_pom_with_doctype_refused(tmp_path):
 
 def test_group_writable_patterns_file_ignored(monkeypatch, tmp_path):
     f = tmp_path / "p.txt"
-    f.write_text("internal-[0-9]+\n")
+    f.write_text("internal-42\n")
     f.chmod(0o666)
     monkeypatch.setenv("MEMPALACE_REDACT_PATTERNS_FILE", str(f))
     R._compiled.cache_clear()
